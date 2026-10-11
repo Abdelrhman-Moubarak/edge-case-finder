@@ -18,10 +18,12 @@ if NGROK_URL is None:
 if API_KEY is None:
     raise RuntimeError("API_KEY environment variable is not set")
 
+
 class QwenLLM(LLM):
     max_new_tokens: int = 1500
-    timeout: int  = 300
-    
+    timeout: int = 300
+    thinking: bool = False
+
     @property
     def _llm_type(self) -> str:
         return "qwen-ngrok"
@@ -39,8 +41,14 @@ class QwenLLM(LLM):
             json={
                 "prompt": prompt,
                 "max_new_tokens": self.max_new_tokens,
+                "thinking": self.thinking,
             },
             timeout=self.timeout,
         )
-        response.raise_for_status()
+
+        if not response.ok:
+            raise RuntimeError(
+                f"Server returned {response.status_code}: {response.text}"
+            )
+
         return response.json()["response"]
