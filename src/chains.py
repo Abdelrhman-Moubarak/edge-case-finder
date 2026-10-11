@@ -56,8 +56,14 @@ def needs_derivation(case: EdgeCase) -> bool:
     return not is_filled(case.expected_exception)
 
 
-def generate_edge_cases(function_code: str, description: str) -> tuple[EdgeCaseSuite, str, list[dict[str, str]]]:
+def report_step(on_step, message: str) -> None:
+    if on_step is not None:
+        on_step(message)
+
+
+def generate_edge_cases(function_code: str, description: str, on_step=None) -> tuple[EdgeCaseSuite, str, list[dict[str, str]]]:
     
+    report_step(on_step, "Reading the function and description, proposing candidate cases")
     generator_raw = build_generator_chain().invoke(
         {
             "function_code": function_code,
@@ -70,6 +76,7 @@ def generate_edge_cases(function_code: str, description: str) -> tuple[EdgeCaseS
         raise
 
     
+    report_step(on_step, "Reviewing the candidates, removing duplicates and weak cases")
     reviewer_raw = build_reviewer_chain().invoke(
         {
             "function_code": function_code,
@@ -87,6 +94,7 @@ def generate_edge_cases(function_code: str, description: str) -> tuple[EdgeCaseS
         case.expected = None
 
     
+    report_step(on_step, "Writing a reference function from the description only")
     function_signature = get_function_signature(function_code)
     reference_raw = build_reference_chain().invoke(
         {
@@ -99,6 +107,7 @@ def generate_edge_cases(function_code: str, description: str) -> tuple[EdgeCaseS
         raise RunnerError("The model returned no reference function")
 
 
+    report_step(on_step, "Running the reference function to get the expected values")
     kept_cases = []
     failed_cases = []
 
